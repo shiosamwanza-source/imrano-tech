@@ -1,0 +1,1327 @@
+import { useState, useEffect } from "react";
+
+// ── COLORS & THEME ────────────────────────────────────────────────────────────
+const C = {
+  navy: "#060c2e", navy2: "#0d1545", navy3: "#162060",
+  pink: "#e8006e", pink2: "#ff1a80", cyan: "#00d4ff",
+  gold: "#ffd700", green: "#00e676", orange: "#ff9800",
+  purple: "#9c27b0", blue: "#2196f3", red: "#f44336",
+  gray: "#7b8ab8", light: "#ccd6f6", white: "#ffffff",
+};
+
+// ── PRODUCTS DATA ─────────────────────────────────────────────────────────────
+const PRODUCTS = [
+  { id:"cctv-4ch", name:"4-Channel CCTV Kit", cat:"Security", price:450000, stock:12, icon:"📹", specs:["4× HD Bullet Cameras","DVR 4-Ch H.265+","1TB Hard Drive","Coaxial Cables 20m×4","Night Vision 30m","Remote Viewing App"], desc:"Complete home & office surveillance.", badge:"Best Seller", badgeColor:C.pink },
+  { id:"cctv-8ch", name:"8-Channel CCTV Kit", cat:"Security", price:780000, stock:5, icon:"🎥", specs:["8× HD IP Cameras","NVR 8-Ch 4K","2TB Hard Drive","Cat6 Cable 50m","Night Vision 40m","Motion Detection AI"], desc:"Professional-grade security for businesses.", badge:"Pro", badgeColor:C.purple },
+  { id:"solar-200", name:"Solar Home Kit 200W", cat:"Solar", price:850000, stock:8, icon:"☀️", specs:["200W Mono Panel","100Ah Deep-Cycle Battery","1000W Pure Sine Inverter","20A MPPT Controller","LED Lighting Kit","5-Year Panel Warranty"], desc:"Power independence for the Tanzanian home.", badge:"Hot Deal", badgeColor:"#ff5722" },
+  { id:"avr-1000", name:"Imranostar AVR 1000VA", cat:"Energy", price:120000, stock:34, icon:"⚡", specs:["Input: 140V–260V","Output: 220V ±5%","IC Powered","Fuse Protection","Delay Restart","Response: 20ms"], desc:"Protect appliances from voltage surges.", badge:"Own Brand", badgeColor:C.blue },
+  { id:"avr-2000", name:"Imranostar AVR 2000VA", cat:"Energy", price:210000, stock:18, icon:"🔌", specs:["2.0KVA Heavy Duty","Digital Display","Fuse Protection","Servo Motor Type","For Fridges & AC","Input: 140V–260V"], desc:"Heavy-duty stabilizer for large appliances.", badge:"New", badgeColor:C.cyan },
+  { id:"battery-60", name:"Car Battery 60Ah", cat:"Battery", price:185000, stock:22, icon:"🔋", specs:["Capacity: 60Ah","Voltage: 12V","CCA: 540A","Sealed Maintenance-Free","18-Month Warranty","Fast Charging"], desc:"Reliable starting power for all vehicles.", badge:"Top Pick", badgeColor:C.green },
+  { id:"mouse-wl", name:"Imranostar Wireless Mouse", cat:"Accessories", price:25000, stock:47, icon:"🖱️", specs:["2.4GHz Wireless","1600 DPI","USB Receiver","Ergonomic Design","6-Month Battery","Plug & Play"], desc:"Smooth wireless control for your PC.", badge:"", badgeColor:C.gray },
+  { id:"lnb-100", name:"Imranosat LNB IT-100", cat:"Accessories", price:18000, stock:60, icon:"📡", specs:["Single LNB","Universal Ku-Band","0.1dB Noise Figure","4K Compatible","Waterproof","Long Range"], desc:"Crystal-clear satellite reception.", badge:"", badgeColor:C.gray },
+];
+
+const REPAIR_STATUSES = ["Received","Diagnosis","Quotation","Awaiting Parts","In Repair","Testing","Ready","Collected"];
+const STATUS_COLOR = { Received:C.gray, Diagnosis:C.blue, Quotation:C.orange, "Awaiting Parts":"#ff9800", "In Repair":C.pink, Testing:C.purple, Ready:C.green, Collected:"#555" };
+const VEHICLES = { V001:"🚗 Land Cruiser #001", V002:"🚐 Hiace Van #002", V003:"🏍️ Boda-Boda #003", V004:"🚗 Corolla #004" };
+
+function genId(prefix="IMP") { return `${prefix}-${Date.now().toString(36).toUpperCase().slice(-6)}`; }
+function fmt(n) { return "TZS " + Number(n).toLocaleString(); }
+function today() { return new Date().toISOString().split("T")[0]; }
+function daysLeft(dateStr) { const d=new Date(dateStr); d.setFullYear(d.getFullYear()+1); return Math.ceil((d-new Date())/86400000); }
+
+// ── MODULES CONFIG ────────────────────────────────────────────────────────────
+const MODULES = [
+  { id:"showroom",  icon:"📺", label:"Digital Showroom",   sub:"Smart TV & Display" },
+  { id:"crm",       icon:"🛡️", label:"Warranty CRM",       sub:"Customer Intelligence" },
+  { id:"repairs",   icon:"🔧", label:"Repairs Workshop",   sub:"Job Card & Tracking" },
+  { id:"inventory", icon:"📦", label:"Inventory",          sub:"Stock Intelligence" },
+  { id:"sales",     icon:"📊", label:"Sales Dashboard",    sub:"Revenue Analytics" },
+  { id:"fleet",     icon:"🚗", label:"Fleet & Delivery",   sub:"Vehicle Management" },
+  { id:"procurement",icon:"🛒",label:"Procurement",        sub:"Suppliers & Orders" },
+  { id:"finance",   icon:"💰", label:"Finance",            sub:"Revenue Overview" },
+  { id:"hr",        icon:"👥", label:"HR & Staff",         sub:"Performance & Attendance" },
+  { id:"marketing", icon:"📣", label:"Marketing",          sub:"SMS & Campaigns" },
+  { id:"executive", icon:"🎯", label:"Command Center",     sub:"Executive Dashboard" },
+  { id:"ai",        icon:"🤖", label:"AI Assistant",       sub:"Business Intelligence" },
+];
+
+// ── SEED DATA ─────────────────────────────────────────────────────────────────
+const SEED_WARRANTIES = [
+  { id:"IMP-A1B2C3", name:"Juma Hassan", phone:"+255712345678", product:"4-Channel CCTV Kit", serial:"CCTV-4CH-00142", date:"2024-11-15", status:"Active", points:150 },
+  { id:"IMP-D4E5F6", name:"Fatuma Ally", phone:"+255698112233", product:"Solar Home Kit 200W", serial:"SOL-200-00891", date:"2024-09-03", status:"Active", points:320 },
+  { id:"IMP-G7H8I9", name:"Bakari Mwenda", phone:"+255756789012", product:"Imranostar AVR 1000VA", serial:"AVR-1K-04412", date:"2024-07-20", status:"Expiring Soon", points:80 },
+  { id:"IMP-J0K1L2", name:"Rehema Saidi", phone:"+255744001122", product:"Car Battery 60Ah", serial:"BAT-60-11234", date:"2025-02-10", status:"Active", points:200 },
+];
+const SEED_REPAIRS = [
+  { id:genId("JOB"), customer:"Hamisi Salum", phone:"+255765432100", device:"CCTV DVR 4-Ch", issue:"No video on channels 3 & 4", status:"In Repair", received:today(), tech:"Rashid", vehicle:"V001", cost:45000, parts:"BNC Connector, Cable" },
+  { id:genId("JOB"), customer:"Mariam Jafari", phone:"+255744123456", device:"Solar Inverter 1000W", issue:"Beeping alarm, battery not charging", status:"Diagnosis", received:today(), tech:"Amin", vehicle:"V002", cost:0, parts:"" },
+  { id:genId("JOB"), customer:"Salehe Kibwana", phone:"+255712987654", device:"Car Battery 60Ah", issue:"Dead cell, won't hold charge", status:"Ready", received:today(), tech:"Hamisi", vehicle:"V001", cost:20000, parts:"" },
+];
+const SEED_STAFF = [
+  { id:"S001", name:"Rashid Omar", role:"Technician", dept:"Workshop", attendance:92, sales:0, repairs:14, score:88 },
+  { id:"S002", name:"Amin Juma", role:"Sales Rep", dept:"Showroom", attendance:97, sales:2340000, repairs:0, score:94 },
+  { id:"S003", name:"Hamisi Ally", role:"Technician", dept:"Workshop", attendance:85, sales:0, repairs:9, score:79 },
+  { id:"S004", name:"Zaina Mweka", role:"Sales Rep", dept:"Showroom", attendance:100, sales:3100000, repairs:0, score:98 },
+  { id:"S005", name:"Omar Salim", role:"Driver", dept:"Fleet", attendance:90, sales:0, repairs:0, score:85 },
+];
+const SEED_SALES = [
+  { date:"2025-06-20", product:"4-Channel CCTV Kit", qty:2, amount:900000, staff:"Amin Juma" },
+  { date:"2025-06-21", product:"Solar Home Kit 200W", qty:1, amount:850000, staff:"Zaina Mweka" },
+  { date:"2025-06-22", product:"Imranostar AVR 1000VA", qty:5, amount:600000, staff:"Amin Juma" },
+  { date:"2025-06-23", product:"Car Battery 60Ah", qty:3, amount:555000, staff:"Zaina Mweka" },
+  { date:"2025-06-24", product:"8-Channel CCTV Kit", qty:1, amount:780000, staff:"Amin Juma" },
+  { date:"2025-06-25", product:"Imranostar AVR 2000VA", qty:2, amount:420000, staff:"Zaina Mweka" },
+  { date:today(), product:"4-Channel CCTV Kit", qty:1, amount:450000, staff:"Amin Juma" },
+];
+
+// ── ROOT APP ──────────────────────────────────────────────────────────────────
+export default function App() {
+  const [mod, setMod] = useState("executive");
+  const [warranties, setWarranties] = useState(SEED_WARRANTIES);
+  const [repairs, setRepairs] = useState(SEED_REPAIRS);
+  const [inventory, setInventory] = useState(PRODUCTS.map(p=>({...p})));
+  const [sales, setSales] = useState(SEED_SALES);
+  const [staff, setStaff] = useState(SEED_STAFF);
+  const [spotlight, setSpotlight] = useState(PRODUCTS[0]);
+  const [tvMode, setTvMode] = useState(false);
+  const [notif, setNotif] = useState("");
+
+  function showNotif(msg, dur=5000) { setNotif(msg); setTimeout(()=>setNotif(""),dur); }
+
+  const shared = { warranties, setWarranties, repairs, setRepairs, inventory, setInventory, sales, setSales, staff, setStaff, spotlight, setSpotlight, tvMode, setTvMode, showNotif };
+
+  if(tvMode) return <TVScreen product={spotlight} onExit={()=>setTvMode(false)} />;
+
+  return (
+    <div style={{minHeight:"100vh",background:C.navy,fontFamily:"'Segoe UI',system-ui,sans-serif",color:C.light,display:"flex",flexDirection:"column"}}>
+      {/* TOP BAR */}
+      <div style={{background:"rgba(255,255,255,0.03)",borderBottom:"1px solid rgba(255,255,255,0.07)",padding:"0 20px",display:"flex",alignItems:"center",justifyContent:"space-between",height:52,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:30,height:30,borderRadius:8,background:"linear-gradient(135deg,#e8006e,#ff6b35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>⚡</div>
+          <span style={{fontWeight:900,fontSize:14,color:C.white,letterSpacing:.5}}>IMRANO</span><span style={{fontWeight:900,fontSize:14,color:C.pink}}>TECH</span>
+          <span style={{color:C.gray,fontSize:10,marginLeft:8,letterSpacing:2,textTransform:"uppercase"}}>Corporate OS v2.0</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:20}}>
+          <LiveClock />
+          <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:C.green,boxShadow:`0 0 8px ${C.green}`}}></div><span style={{fontSize:11,color:C.gray}}>Lumumba St, Mwanza</span></div>
+          {notif && <div style={{maxWidth:320,padding:"6px 14px",background:"rgba(0,230,118,0.12)",border:`1px solid rgba(0,230,118,0.3)`,borderRadius:20,color:C.green,fontSize:11,fontWeight:600}}>{notif}</div>}
+        </div>
+      </div>
+
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+        {/* SIDEBAR */}
+        <div style={{width:200,background:"rgba(0,0,0,0.25)",borderRight:"1px solid rgba(255,255,255,0.06)",padding:"12px 0",overflowY:"auto",flexShrink:0}}>
+          {MODULES.map(m=>(
+            <div key={m.id} onClick={()=>setMod(m.id)} style={{padding:"10px 16px",cursor:"pointer",background:mod===m.id?"rgba(232,0,110,0.12)":"transparent",borderLeft:`3px solid ${mod===m.id?C.pink:"transparent"}`,transition:"all .2s",display:"flex",alignItems:"center",gap:10,marginBottom:2}}>
+              <span style={{fontSize:16}}>{m.icon}</span>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:mod===m.id?C.white:C.light,letterSpacing:.2}}>{m.label}</div>
+                <div style={{fontSize:9,color:C.gray,textTransform:"uppercase",letterSpacing:1}}>{m.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div style={{flex:1,overflowY:"auto",padding:24}}>
+          {mod==="showroom"   && <ShowroomModule {...shared}/>}
+          {mod==="crm"        && <CRMModule {...shared}/>}
+          {mod==="repairs"    && <RepairsModule {...shared}/>}
+          {mod==="inventory"  && <InventoryModule {...shared}/>}
+          {mod==="sales"      && <SalesModule {...shared}/>}
+          {mod==="fleet"      && <FleetModule {...shared}/>}
+          {mod==="procurement"&& <ProcurementModule {...shared}/>}
+          {mod==="finance"    && <FinanceModule {...shared}/>}
+          {mod==="hr"         && <HRModule {...shared}/>}
+          {mod==="marketing"  && <MarketingModule {...shared}/>}
+          {mod==="executive"  && <ExecutiveModule {...shared} switchMod={setMod}/>}
+          {mod==="ai"         && <AIModule {...shared}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── LIVE CLOCK ────────────────────────────────────────────────────────────────
+function LiveClock() {
+  const [t,setT]=useState(new Date());
+  useEffect(()=>{const i=setInterval(()=>setT(new Date()),1000);return()=>clearInterval(i);},[]);
+  return <span style={{fontSize:12,color:C.gray,fontVariantNumeric:"tabular-nums"}}>{t.toLocaleTimeString("sw-TZ",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</span>;
+}
+
+// ── SHARED UI COMPONENTS ──────────────────────────────────────────────────────
+function ModHeader({icon,title,sub,action}) {
+  return (
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+          <span style={{fontSize:20}}>{icon}</span>
+          <span style={{fontSize:18,fontWeight:800,color:C.white}}>{title}</span>
+        </div>
+        <div style={{fontSize:12,color:C.gray}}>{sub}</div>
+      </div>
+      {action}
+    </div>
+  );
+}
+function Btn({onClick,children,color=C.pink,style={}}) {
+  return <button onClick={onClick} style={{padding:"9px 20px",background:`linear-gradient(135deg,${color},${color}cc)`,color:"#fff",border:"none",borderRadius:9,fontWeight:700,fontSize:12,cursor:"pointer",boxShadow:`0 3px 12px ${color}44`,...style}}>{children}</button>;
+}
+function GhostBtn({onClick,children}) {
+  return <button onClick={onClick} style={{padding:"9px 18px",background:"rgba(255,255,255,0.05)",color:C.gray,border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,fontSize:12,cursor:"pointer"}}>{children}</button>;
+}
+function Card({children,style={}}) {
+  return <div style={{background:"rgba(255,255,255,0.02)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:14,padding:20,...style}}>{children}</div>;
+}
+function KPI({label,value,icon,color=C.pink,sub=""}) {
+  return (
+    <Card style={{display:"flex",gap:14,alignItems:"center"}}>
+      <div style={{width:46,height:46,borderRadius:12,background:`${color}18`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{icon}</div>
+      <div><div style={{fontSize:22,fontWeight:900,color,lineHeight:1}}>{value}</div><div style={{fontSize:11,color:C.gray,marginTop:3}}>{label}</div>{sub&&<div style={{fontSize:10,color:C.gray,marginTop:1}}>{sub}</div>}</div>
+    </Card>
+  );
+}
+function Input({label,value,onChange,placeholder,type="text",style={}}) {
+  return (
+    <div style={{...style}}>
+      {label&&<label style={{fontSize:10,color:C.gray,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",display:"block",marginBottom:6}}>{label}</label>}
+      <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} type={type} style={{width:"100%",padding:"10px 13px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:C.white,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+    </div>
+  );
+}
+function Select({label,value,onChange,options,style={}}) {
+  return (
+    <div style={style}>
+      {label&&<label style={{fontSize:10,color:C.gray,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",display:"block",marginBottom:6}}>{label}</label>}
+      <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"10px 13px",background:"#0d1545",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:C.white,fontSize:13,outline:"none",boxSizing:"border-box"}}>
+        {options.map(o=><option key={o.value||o} value={o.value||o}>{o.label||o}</option>)}
+      </select>
+    </div>
+  );
+}
+function Badge({label,color=C.pink}) {
+  return <span style={{padding:"3px 10px",borderRadius:20,background:`${color}1a`,color,border:`1px solid ${color}44`,fontSize:10,fontWeight:700,letterSpacing:.5}}>{label}</span>;
+}
+function BarChart({data,max,color=C.pink}) {
+  return (
+    <div style={{display:"flex",gap:8,alignItems:"flex-end",height:80}}>
+      {data.map((d,i)=>(
+        <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+          <div style={{width:"100%",background:`${color}cc`,borderRadius:"4px 4px 0 0",height:`${max?Math.max(4,(d.v/max)*68):4}px`,transition:"height .5s"}}></div>
+          <div style={{fontSize:9,color:C.gray,textAlign:"center"}}>{d.l}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 1 — DIGITAL SHOWROOM
+// ══════════════════════════════════════════════════════════════════════════════
+function ShowroomModule({spotlight,setSpotlight,tvMode,setTvMode,inventory}) {
+  const [anim,setAnim]=useState(false);
+  const [compare,setCompare]=useState([]);
+  const [view,setView]=useState("showcase");
+
+  function pick(p){setAnim(true);setTimeout(()=>{setSpotlight(p);setAnim(false);},250);}
+  function toggleCompare(p){setCompare(c=>c.find(x=>x.id===p.id)?c.filter(x=>x.id!==p.id):c.length<3?[...c,p]:c);}
+
+  return (
+    <div>
+      <ModHeader icon="📺" title="Digital Showroom" sub="Smart TV Showcase • Product Comparison • Bundle Promotions"
+        action={<div style={{display:"flex",gap:10}}>
+          {["showcase","compare","bundles","newArrivals"].map(v=>(
+            <button key={v} onClick={()=>setView(v)} style={{padding:"7px 14px",borderRadius:8,background:view===v?C.pink:"rgba(255,255,255,0.05)",border:`1px solid ${view===v?C.pink:"rgba(255,255,255,0.1)"}`,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              {{showcase:"Showcase",compare:"Compare",bundles:"Bundles",newArrivals:"New Arrivals"}[v]}
+            </button>
+          ))}
+        </div>}
+      />
+
+      {view==="showcase" && (
+        <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:20}}>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <div style={{fontSize:10,color:C.pink,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Chagua Bidhaa</div>
+            {inventory.map(p=>(
+              <div key={p.id} onClick={()=>pick(p)} style={{padding:"11px 13px",borderRadius:10,cursor:"pointer",border:`1px solid ${spotlight.id===p.id?C.pink:"rgba(255,255,255,0.06)"}`,background:spotlight.id===p.id?"rgba(232,0,110,0.08)":"rgba(255,255,255,0.02)",transition:"all .2s",display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:18}}>{p.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:700,color:spotlight.id===p.id?C.white:C.light,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{p.name}</div>
+                  <div style={{fontSize:10,color:C.gray}}>{fmt(p.price)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+              <Btn onClick={()=>setTvMode(true)}>📺 Fungua Skrini ya TV</Btn>
+            </div>
+            <Card style={{opacity:anim?0:1,transition:"opacity .25s",background:"linear-gradient(145deg,#0a1040,#0f0530)",border:"1px solid rgba(255,255,255,0.08)",minHeight:360}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:32,alignItems:"center",padding:12}}>
+                <div>
+                  {spotlight.badge&&<Badge label={spotlight.badge} color={spotlight.badgeColor}/>}
+                  <div style={{fontSize:64,margin:"16px 0",filter:"drop-shadow(0 0 30px rgba(232,0,110,0.4))"}}>{spotlight.icon}</div>
+                  <div style={{fontSize:11,color:C.pink,fontWeight:700,letterSpacing:3,textTransform:"uppercase",marginBottom:8}}>{spotlight.cat}</div>
+                  <div style={{fontSize:24,fontWeight:900,color:C.white,marginBottom:10,lineHeight:1.2}}>{spotlight.name}</div>
+                  <div style={{fontSize:13,color:C.gray,marginBottom:20,lineHeight:1.6}}>{spotlight.desc}</div>
+                  <div style={{fontSize:30,fontWeight:900,background:"linear-gradient(135deg,#e8006e,#ffd700)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(spotlight.price)}</div>
+                  <div style={{marginTop:10,fontSize:12,color:C.green}}>✓ Dhamana ya mwaka 1 &nbsp;|&nbsp; ✓ Usakinishaji wa kitaalamu</div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:C.gray,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Sifa za Kifaa</div>
+                  {spotlight.specs.map((s,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",borderRadius:9,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.06)",marginBottom:8}}>
+                      <div style={{width:5,height:5,borderRadius:"50%",background:C.pink,flexShrink:0}}></div>
+                      <span style={{fontSize:12,color:C.light}}>{s}</span>
+                    </div>
+                  ))}
+                  <div style={{marginTop:16,padding:"12px 16px",borderRadius:10,background:"rgba(232,0,110,0.1)",border:"1px solid rgba(232,0,110,0.2)",display:"flex",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:16}}>📞</span>
+                    <div><div style={{fontSize:10,color:C.pink,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Wasiliana</div><div style={{fontSize:14,color:C.white,fontWeight:700}}>+255 698 533 107</div></div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {view==="compare" && (
+        <div>
+          <div style={{fontSize:12,color:C.gray,marginBottom:16}}>Chagua hadi bidhaa 3 kulinganisha — bonyeza bidhaa hapa chini</div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}>
+            {inventory.map(p=>(
+              <button key={p.id} onClick={()=>toggleCompare(p)} style={{padding:"7px 14px",borderRadius:20,background:compare.find(x=>x.id===p.id)?C.pink:"rgba(255,255,255,0.05)",border:`1px solid ${compare.find(x=>x.id===p.id)?C.pink:"rgba(255,255,255,0.1)"}`,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                {p.icon} {p.name.split(" ").slice(0,2).join(" ")}
+              </button>
+            ))}
+          </div>
+          {compare.length>0&&(
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${compare.length},1fr)`,gap:16}}>
+              {compare.map(p=>(
+                <Card key={p.id} style={{textAlign:"center"}}>
+                  <div style={{fontSize:40,marginBottom:10}}>{p.icon}</div>
+                  <div style={{fontSize:13,fontWeight:800,color:C.white,marginBottom:6}}>{p.name}</div>
+                  <div style={{fontSize:18,fontWeight:900,color:C.pink,marginBottom:12}}>{fmt(p.price)}</div>
+                  <div style={{textAlign:"left"}}>
+                    {p.specs.map((s,i)=><div key={i} style={{fontSize:11,color:C.gray,padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>• {s}</div>)}
+                  </div>
+                  <div style={{marginTop:12}}><Badge label={`Stock: ${p.stock}`} color={p.stock<10?C.orange:C.green}/></div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {view==="bundles" && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:16}}>
+          {[
+            {name:"Security Starter Bundle",items:["4-Channel CCTV Kit","Imranostar Coaxial Cable"],price:490000,save:40000,icon:"🔒"},
+            {name:"Power Protection Bundle",items:["Imranostar AVR 2000VA","Car Battery 60Ah"],price:370000,save:25000,icon:"⚡"},
+            {name:"Solar Complete Bundle",items:["Solar Home Kit 200W","Imranostar AVR 1000VA"],price:940000,save:30000,icon:"☀️"},
+            {name:"Business Security Bundle",items:["8-Channel CCTV Kit","4-Channel CCTV Kit"],price:1190000,save:40000,icon:"🏢"},
+          ].map(b=>(
+            <Card key={b.name} style={{border:`1px solid rgba(232,0,110,0.2)`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+                <div><span style={{fontSize:28}}>{b.icon}</span><div style={{fontSize:14,fontWeight:800,color:C.white,marginTop:6}}>{b.name}</div></div>
+                <Badge label={`Okoa ${fmt(b.save)}`} color={C.green}/>
+              </div>
+              {b.items.map((item,i)=><div key={i} style={{fontSize:12,color:C.gray,padding:"4px 0"}}>✓ {item}</div>)}
+              <div style={{marginTop:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div style={{fontSize:20,fontWeight:900,color:C.pink}}>{fmt(b.price)}</div>
+                <Btn>Ongeza Kwenye Mauzo</Btn>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {view==="newArrivals" && (
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+          {inventory.slice(0,6).map(p=>(
+            <Card key={p.id} style={{textAlign:"center",cursor:"pointer"}} >
+              <div style={{fontSize:36,marginBottom:10}}>{p.icon}</div>
+              <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:6}}>{p.name}</div>
+              <div style={{fontSize:11,color:C.gray,marginBottom:10}}>{p.cat}</div>
+              <div style={{fontSize:16,fontWeight:900,color:C.pink,marginBottom:10}}>{fmt(p.price)}</div>
+              <Badge label={`Stock: ${p.stock}`} color={p.stock<10?C.orange:C.green}/>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── TV FULLSCREEN ──────────────────────────────────────────────────────────────
+function TVScreen({product,onExit}) {
+  const [tick,setTick]=useState(0);
+  useEffect(()=>{const i=setInterval(()=>setTick(t=>t+1),3000);return()=>clearInterval(i);},[]);
+  return (
+    <div style={{minHeight:"100vh",background:"linear-gradient(145deg,#060c2e,#0a1040,#0f0530)",position:"relative",overflow:"hidden",display:"flex",flexDirection:"column",justifyContent:"space-between",padding:50}}>
+      <div style={{position:"absolute",top:-150,right:-150,width:700,height:700,background:"radial-gradient(circle,rgba(232,0,110,0.2),transparent 60%)",pointerEvents:"none"}}></div>
+      <div style={{position:"absolute",inset:0,backgroundImage:"linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px)",backgroundSize:"60px 60px",pointerEvents:"none"}}></div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",position:"relative",zIndex:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:14}}>
+          <div style={{width:46,height:46,borderRadius:12,background:"linear-gradient(135deg,#e8006e,#ff6b35)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>⚡</div>
+          <div><div style={{fontSize:20,fontWeight:900,color:C.white}}>IMRANO<span style={{color:C.pink}}>TECH</span></div><div style={{fontSize:10,color:C.gray,letterSpacing:3}}>MWANZA, TANZANIA</div></div>
+        </div>
+        <button onClick={onExit} style={{padding:"8px 20px",background:"rgba(255,255,255,0.08)",border:"1px solid rgba(255,255,255,0.15)",color:C.white,borderRadius:8,cursor:"pointer",fontSize:13}}>✕ Rudi</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:80,alignItems:"center",position:"relative",zIndex:1,flex:1,padding:"40px 0"}}>
+        <div>
+          {product.badge&&<Badge label={product.badge} color={product.badgeColor}/>}
+          <div style={{fontSize:100,margin:"20px 0",filter:"drop-shadow(0 0 50px rgba(232,0,110,0.5))"}}>{product.icon}</div>
+          <div style={{fontSize:14,color:C.pink,fontWeight:700,letterSpacing:4,textTransform:"uppercase",marginBottom:10}}>{product.cat}</div>
+          <div style={{fontSize:44,fontWeight:900,color:C.white,lineHeight:1.1,marginBottom:14}}>{product.name}</div>
+          <div style={{fontSize:18,color:C.gray,lineHeight:1.7,marginBottom:28}}>{product.desc}</div>
+          <div style={{fontSize:56,fontWeight:900,background:"linear-gradient(135deg,#e8006e,#ffd700)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(product.price)}</div>
+          <div style={{marginTop:12,fontSize:16,color:C.green,fontWeight:600}}>✓ Dhamana mwaka 1 &nbsp;&nbsp; ✓ Usakinishaji wa kitaalamu</div>
+        </div>
+        <div>
+          {product.specs.map((s,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 18px",borderRadius:12,background:i===tick%product.specs.length?"rgba(232,0,110,0.12)":"rgba(255,255,255,0.04)",border:`1px solid ${i===tick%product.specs.length?"rgba(232,0,110,0.4)":"rgba(255,255,255,0.06)"}`,marginBottom:10,transition:"all .5s"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:i===tick%product.specs.length?C.pink:"#444",flexShrink:0}}></div>
+              <span style={{fontSize:16,color:i===tick%product.specs.length?C.white:C.gray,fontWeight:i===tick%product.specs.length?700:400}}>{s}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1px solid rgba(255,255,255,0.06)",paddingTop:20,position:"relative",zIndex:1}}>
+        <div style={{display:"flex",gap:40}}>
+          {[["Simu/WhatsApp","+255 698 533 107"],["Anwani","Lumumba St, Mwanza"],["Mitandao","@chapchapservices"]].map(([k,v])=>(
+            <div key={k}><div style={{fontSize:10,color:C.gray,textTransform:"uppercase",letterSpacing:2}}>{k}</div><div style={{fontSize:16,fontWeight:800,color:C.white}}>{v}</div></div>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          {["M-Pesa","Tigo Pesa","Airtel Money","HaloPesa"].map(m=>(
+            <div key={m} style={{padding:"6px 12px",borderRadius:20,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",fontSize:11,color:C.light,fontWeight:600}}>{m}</div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 2 — WARRANTY CRM
+// ══════════════════════════════════════════════════════════════════════════════
+function CRMModule({warranties,setWarranties,showNotif}) {
+  const [form,setForm]=useState({name:"",phone:"",product:"",serial:""});
+  const [search,setSearch]=useState("");
+  const [showForm,setShowForm]=useState(false);
+  const [tab,setTab]=useState("list");
+
+  function register(){
+    if(!form.name||!form.phone||!form.product||!form.serial)return;
+    const w={id:genId("IMP"),...form,date:today(),status:"Active",points:100};
+    setWarranties(ws=>[w,...ws]);
+    showNotif(`✓ Dhamana ya ${form.name} imesajiliwa! ID: ${w.id}`);
+    setForm({name:"",phone:"",product:"",serial:""});setShowForm(false);
+  }
+
+  const filtered=warranties.filter(w=>
+    w.name.toLowerCase().includes(search.toLowerCase())||w.phone.includes(search)||w.serial.toLowerCase().includes(search.toLowerCase())||w.id.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function wStatusColor(s){return s==="Active"?C.green:s==="Expiring Soon"?C.gold:C.red;}
+
+  return (
+    <div>
+      <ModHeader icon="🛡️" title="Warranty CRM & Customer Intelligence" sub={`Wateja ${warranties.length} wamesajiliwa`}
+        action={<div style={{display:"flex",gap:10}}>
+          {["list","analytics","vip"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",borderRadius:8,background:tab===t?C.pink:"rgba(255,255,255,0.05)",border:`1px solid ${tab===t?C.pink:"rgba(255,255,255,0.1)"}`,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              {{list:"Orodha",analytics:"Takwimu",vip:"VIP Wateja"}[t]}
+            </button>
+          ))}
+          <Btn onClick={()=>setShowForm(!showForm)}>+ Sajili Dhamana</Btn>
+        </div>}
+      />
+
+      {showForm&&(
+        <Card style={{border:`1px solid rgba(232,0,110,0.25)`,marginBottom:20}}>
+          <div style={{fontSize:14,fontWeight:700,color:C.white,marginBottom:16}}>🛡️ Usajili wa Dhamana Mpya</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Input label="Jina la Mteja" value={form.name} onChange={v=>setForm(f=>({...f,name:v}))} placeholder="e.g. Juma Hassan"/>
+            <Input label="Simu / WhatsApp" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="+255 7XX XXX XXX"/>
+            <Input label="Bidhaa" value={form.product} onChange={v=>setForm(f=>({...f,product:v}))} placeholder="e.g. 4-Channel CCTV Kit"/>
+            <Input label="Serial Number" value={form.serial} onChange={v=>setForm(f=>({...f,serial:v}))} placeholder="e.g. CCTV-4CH-00142"/>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:16}}><Btn onClick={register}>Sajili Sasa</Btn><GhostBtn onClick={()=>setShowForm(false)}>Ghairi</GhostBtn></div>
+        </Card>
+      )}
+
+      {tab==="list"&&(
+        <>
+          <div style={{display:"flex",gap:12,marginBottom:18}}>
+            <div style={{position:"relative",flex:1}}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tafuta kwa jina, simu, serial, au ID..." style={{width:"100%",padding:"9px 14px 9px 36px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:C.white,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+              <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.gray}}>🔍</span>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+            <KPI label="Jumla Wateja" value={warranties.length} icon="👥" color={C.blue}/>
+            <KPI label="Dhamana Hai" value={warranties.filter(w=>w.status==="Active").length} icon="🛡️" color={C.green}/>
+            <KPI label="Zinaisha Hivi Karibuni" value={warranties.filter(w=>w.status==="Expiring Soon").length} icon="⚠️" color={C.gold}/>
+            <KPI label="Total Loyalty Points" value={warranties.reduce((a,w)=>a+(w.points||0),0).toLocaleString()} icon="⭐" color={C.pink}/>
+          </div>
+          <Card style={{padding:0,overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"100px 1fr 140px 1fr 100px 90px 90px",padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.03)"}}>
+              {["ID","Mteja","Simu","Bidhaa / Serial","Tarehe","Siku","Hali"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.gray,letterSpacing:2,textTransform:"uppercase"}}>{h}</div>)}
+            </div>
+            {filtered.map(w=>{
+              const dl=daysLeft(w.date);
+              return(
+                <div key={w.id} style={{display:"grid",gridTemplateColumns:"100px 1fr 140px 1fr 100px 90px 90px",padding:"13px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div style={{fontSize:10,fontFamily:"monospace",color:C.pink,fontWeight:700}}>{w.id}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:C.white}}>{w.name}</div>
+                  <div style={{fontSize:11,color:C.gray}}>{w.phone}</div>
+                  <div><div style={{fontSize:12,color:C.light,fontWeight:600}}>{w.product}</div><div style={{fontSize:10,color:"#555",fontFamily:"monospace"}}>{w.serial}</div></div>
+                  <div style={{fontSize:11,color:C.gray}}>{w.date}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:dl<0?C.red:dl<30?C.gold:C.green}}>{dl<0?"Imekwisha":`${dl}d`}</div>
+                  <Badge label={w.status} color={wStatusColor(w.status)}/>
+                </div>
+              );
+            })}
+          </Card>
+        </>
+      )}
+
+      {tab==="analytics"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <Card><div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Mauzo kwa Bidhaa</div>
+            {["CCTV","Solar","Battery","AVR"].map((p,i)=>(
+              <div key={p} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:12,color:C.gray}}>{p}</span>
+                <div style={{flex:1,margin:"0 14px",height:6,background:"rgba(255,255,255,0.06)",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",background:[C.pink,C.blue,C.green,C.orange][i],width:`${[60,25,40,35][i]}%`,borderRadius:3}}></div>
+                </div>
+                <span style={{fontSize:12,color:C.white,fontWeight:700}}>{[60,25,40,35][i]}%</span>
+              </div>
+            ))}
+          </Card>
+          <Card><div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Hali ya Dhamana</div>
+            {[["Active",C.green],["Expiring Soon",C.gold],["Expired",C.red]].map(([s,color])=>(
+              <div key={s} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:color}}></div><span style={{fontSize:12,color:C.gray}}>{s}</span></div>
+                <span style={{fontSize:16,fontWeight:700,color}}>{warranties.filter(w=>w.status===s).length}</span>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {tab==="vip"&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+          {warranties.filter(w=>(w.points||0)>=200).map(w=>(
+            <Card key={w.id} style={{border:"1px solid rgba(255,215,0,0.25)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div><div style={{fontSize:15,fontWeight:800,color:C.white}}>{w.name}</div><div style={{fontSize:11,color:C.gray}}>{w.phone}</div></div>
+                <Badge label="⭐ VIP" color={C.gold}/>
+              </div>
+              <div style={{fontSize:12,color:C.gray}}>{w.product}</div>
+              <div style={{fontSize:20,fontWeight:900,color:C.gold,marginTop:8}}>{w.points} pts</div>
+            </Card>
+          ))}
+          {warranties.filter(w=>(w.points||0)>=200).length===0&&<div style={{gridColumn:"1/-1",padding:40,textAlign:"center",color:C.gray}}>Hakuna VIP wateja bado — wateja wanaponunua zaidi, wanafikia VIP status</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 3 — REPAIRS WORKSHOP
+// ══════════════════════════════════════════════════════════════════════════════
+function RepairsModule({repairs,setRepairs,showNotif}) {
+  const [showForm,setShowForm]=useState(false);
+  const [form,setForm]=useState({customer:"",phone:"",device:"",issue:"",tech:"",vehicle:"V001",cost:""});
+  const [filter,setFilter]=useState("All");
+
+  function addRepair(){
+    if(!form.customer||!form.phone||!form.device)return;
+    const r={id:genId("JOB"),...form,status:"Received",received:today()};
+    setRepairs(rs=>[r,...rs]);
+    setForm({customer:"",phone:"",device:"",issue:"",tech:"",vehicle:"V001",cost:""});
+    setShowForm(false);
+    showNotif(`📋 Kazi mpya ${r.id} imesajiliwa`);
+  }
+
+  function updateStatus(id,s){
+    setRepairs(rs=>rs.map(r=>r.id===id?{...r,status:s}:r));
+    if(s==="Ready"){const r=repairs.find(x=>x.id===id);showNotif(`📲 SMS imetumwa kwa ${r?.customer}: "Kifaa chako kiko tayari — Imrano Electronics, Lumumba St"`);}
+  }
+
+  const filtered=filter==="All"?repairs:repairs.filter(r=>r.status===filter);
+
+  return (
+    <div>
+      <ModHeader icon="🔧" title="Repairs Workshop & Job Tracker" sub={`Kazi ${repairs.length} — ${repairs.filter(r=>r.status==="Ready").length} ziko tayari`}
+        action={<Btn onClick={()=>setShowForm(!showForm)}>+ Kazi Mpya</Btn>}
+      />
+
+      {showForm&&(
+        <Card style={{border:"1px solid rgba(232,0,110,0.25)",marginBottom:20}}>
+          <div style={{fontSize:14,fontWeight:700,color:C.white,marginBottom:16}}>🔧 Job Card Mpya</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Input label="Jina la Mteja" value={form.customer} onChange={v=>setForm(f=>({...f,customer:v}))} placeholder="e.g. Hamisi Salum"/>
+            <Input label="Simu ya Mteja" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="+255 7XX XXX XXX"/>
+            <Input label="Kifaa Kilicholetwa" value={form.device} onChange={v=>setForm(f=>({...f,device:v}))} placeholder="e.g. CCTV DVR, Solar Inverter"/>
+            <Input label="Gharama ya Ukarabati" value={form.cost} onChange={v=>setForm(f=>({...f,cost:v}))} placeholder="TZS" type="number"/>
+            <Input label="Tatizo Lililotajwa" value={form.issue} onChange={v=>setForm(f=>({...f,issue:v}))} placeholder="Elezea tatizo..." style={{gridColumn:"1/-1"}}/>
+            <Input label="Fundi" value={form.tech} onChange={v=>setForm(f=>({...f,tech:v}))} placeholder="e.g. Rashid"/>
+            <Select label="Gari" value={form.vehicle} onChange={v=>setForm(f=>({...f,vehicle:v}))} options={Object.entries(VEHICLES).map(([k,v])=>({value:k,label:v}))}/>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:16}}><Btn onClick={addRepair}>Sajili Kazi</Btn><GhostBtn onClick={()=>setShowForm(false)}>Ghairi</GhostBtn></div>
+        </Card>
+      )}
+
+      <div style={{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"}}>
+        {["All",...REPAIR_STATUSES].map(s=>(
+          <button key={s} onClick={()=>setFilter(s)} style={{padding:"6px 13px",borderRadius:20,background:filter===s?(STATUS_COLOR[s]||C.pink):"rgba(255,255,255,0.05)",border:`1px solid ${filter===s?(STATUS_COLOR[s]||C.pink):"rgba(255,255,255,0.1)"}`,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            {s} {s!=="All"&&`(${repairs.filter(r=>r.status===s).length})`}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {filtered.map(r=>(
+          <Card key={r.id} style={{border:`1px solid ${r.status==="Ready"?"rgba(0,230,118,0.25)":"rgba(255,255,255,0.07)"}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                  <span style={{fontSize:12,fontFamily:"monospace",color:C.pink,fontWeight:700}}>{r.id}</span>
+                  <span style={{fontSize:10,color:C.gray}}>• {r.received} • {VEHICLES[r.vehicle]} {r.tech&&`• 👷 ${r.tech}`}</span>
+                </div>
+                <div style={{fontSize:15,fontWeight:700,color:C.white}}>{r.customer} <span style={{fontSize:12,color:C.gray,fontWeight:400}}>({r.phone})</span></div>
+                <div style={{fontSize:12,color:C.gray,marginTop:2}}><strong style={{color:C.light}}>{r.device}</strong>{r.issue&&` — ${r.issue}`}</div>
+                {r.cost&&<div style={{fontSize:12,color:C.gold,marginTop:4}}>Gharama: {fmt(r.cost)}</div>}
+              </div>
+              <Badge label={r.status} color={STATUS_COLOR[r.status]}/>
+            </div>
+            {/* Pipeline */}
+            <div style={{display:"flex",gap:3,alignItems:"center",margin:"12px 0"}}>
+              {REPAIR_STATUSES.map((s,i)=>{
+                const idx=REPAIR_STATUSES.indexOf(r.status),done=i<=idx;
+                return <div key={s} style={{flex:1,height:3,borderRadius:2,background:done?STATUS_COLOR[r.status]:"rgba(255,255,255,0.08)",transition:"all .3s",position:"relative"}} title={s}>{i===idx&&<div style={{position:"absolute",top:-3,left:"50%",transform:"translateX(-50%)",width:9,height:9,borderRadius:"50%",background:STATUS_COLOR[r.status],boxShadow:`0 0 8px ${STATUS_COLOR[r.status]}`}}></div>}</div>;
+              })}
+            </div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+              {REPAIR_STATUSES.map(s=>(
+                <button key={s} onClick={()=>updateStatus(r.id,s)} disabled={r.status===s} style={{padding:"5px 10px",borderRadius:7,background:r.status===s?`${STATUS_COLOR[s]}22`:"rgba(255,255,255,0.04)",border:`1px solid ${r.status===s?STATUS_COLOR[s]:"rgba(255,255,255,0.08)"}`,color:r.status===s?STATUS_COLOR[s]:C.gray,fontSize:10,fontWeight:600,cursor:r.status===s?"default":"pointer"}}>
+                  {s==="Ready"?"✅ ":""}{s}
+                </button>
+              ))}
+            </div>
+          </Card>
+        ))}
+        {filtered.length===0&&<Card style={{textAlign:"center",padding:40,color:C.gray}}>Hakuna kazi katika hatua hii</Card>}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 4 — INVENTORY
+// ══════════════════════════════════════════════════════════════════════════════
+function InventoryModule({inventory,setInventory,showNotif}) {
+  const [search,setSearch]=useState("");
+  const [editId,setEditId]=useState(null);
+  const [editStock,setEditStock]=useState("");
+
+  const filtered=inventory.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())||p.cat.toLowerCase().includes(search.toLowerCase()));
+
+  function saveStock(id){
+    setInventory(inv=>inv.map(p=>p.id===id?{...p,stock:parseInt(editStock)||0}:p));
+    setEditId(null);showNotif("✓ Stock imesasishwa");
+  }
+
+  const lowStock=inventory.filter(p=>p.stock<10);
+  const totalValue=inventory.reduce((a,p)=>a+p.price*p.stock,0);
+
+  return (
+    <div>
+      <ModHeader icon="📦" title="Inventory Intelligence" sub="Real-Time Stock • Low Stock Alerts • ABC Analysis"/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Bidhaa Zote" value={inventory.length} icon="📦" color={C.blue}/>
+        <KPI label="Stock Nyingi (>20)" value={inventory.filter(p=>p.stock>20).length} icon="✅" color={C.green}/>
+        <KPI label="Stock Chache (<10)" value={lowStock.length} icon="⚠️" color={C.orange}/>
+        <KPI label="Thamani ya Stock" value={`${(totalValue/1000000).toFixed(1)}M`} icon="💰" color={C.pink} sub="TZS"/>
+      </div>
+      {lowStock.length>0&&(
+        <div style={{padding:"10px 16px",background:"rgba(255,152,0,0.1)",border:"1px solid rgba(255,152,0,0.3)",borderRadius:10,marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+          <span>⚠️</span><span style={{fontSize:12,color:C.orange,fontWeight:600}}>Low Stock Alert: {lowStock.map(p=>p.name).join(", ")}</span>
+        </div>
+      )}
+      <div style={{marginBottom:16}}>
+        <div style={{position:"relative"}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tafuta bidhaa..." style={{width:"100%",padding:"9px 14px 9px 36px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:C.white,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+          <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:C.gray}}>🔍</span>
+        </div>
+      </div>
+      <Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"40px 1fr 80px 100px 120px 130px 120px",padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.03)"}}>
+          {["","Bidhaa","Cat","Bei","Stock","Thamani","Hatua"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.gray,letterSpacing:2,textTransform:"uppercase"}}>{h}</div>)}
+        </div>
+        {filtered.map(p=>(
+          <div key={p.id} style={{display:"grid",gridTemplateColumns:"40px 1fr 80px 100px 120px 130px 120px",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <span style={{fontSize:20}}>{p.icon}</span>
+            <div><div style={{fontSize:13,fontWeight:600,color:C.white}}>{p.name}</div><div style={{fontSize:10,color:C.gray}}>{p.id}</div></div>
+            <div style={{fontSize:11,color:C.gray}}>{p.cat}</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.light}}>{fmt(p.price)}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              {editId===p.id?(
+                <div style={{display:"flex",gap:4}}>
+                  <input value={editStock} onChange={e=>setEditStock(e.target.value)} type="number" style={{width:52,padding:"4px 6px",background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",borderRadius:6,color:C.white,fontSize:12,outline:"none"}}/>
+                  <button onClick={()=>saveStock(p.id)} style={{padding:"4px 8px",background:C.green,border:"none",borderRadius:6,color:"#fff",fontSize:10,cursor:"pointer"}}>✓</button>
+                  <button onClick={()=>setEditId(null)} style={{padding:"4px 8px",background:"rgba(255,255,255,0.1)",border:"none",borderRadius:6,color:C.gray,fontSize:10,cursor:"pointer"}}>✕</button>
+                </div>
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <span style={{fontSize:14,fontWeight:700,color:p.stock<5?C.red:p.stock<10?C.orange:C.green}}>{p.stock}</span>
+                  <button onClick={()=>{setEditId(p.id);setEditStock(String(p.stock));}} style={{padding:"3px 8px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:C.gray,fontSize:10,cursor:"pointer"}}>Hariri</button>
+                </div>
+              )}
+            </div>
+            <div style={{fontSize:12,fontWeight:700,color:C.light}}>{fmt(p.price*p.stock)}</div>
+            <Badge label={p.stock<5?"Hatarini":p.stock<10?"Chache":p.stock>30?"Nyingi":"Kawaida"} color={p.stock<5?C.red:p.stock<10?C.orange:p.stock>30?C.blue:C.green}/>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 5 — SALES DASHBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+function SalesModule({sales,setSales,showNotif}) {
+  const [form,setForm]=useState({product:"",qty:"",amount:"",staff:""});
+  const [showForm,setShowForm]=useState(false);
+
+  function addSale(){
+    if(!form.product||!form.amount)return;
+    setSales(s=>[{...form,date:today()},...s]);
+    setForm({product:"",qty:"",amount:"",staff:""});setShowForm(false);
+    showNotif(`✓ Mauzo yameongezwa: ${fmt(form.amount)}`);
+  }
+
+  const todaySales=sales.filter(s=>s.date===today());
+  const todayTotal=todaySales.reduce((a,s)=>a+Number(s.amount),0);
+  const weekTotal=sales.reduce((a,s)=>a+Number(s.amount),0);
+
+  const byProduct={};
+  sales.forEach(s=>{byProduct[s.product]=(byProduct[s.product]||0)+Number(s.amount);});
+  const topProducts=Object.entries(byProduct).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+  const byStaff={};
+  sales.forEach(s=>{if(s.staff)byStaff[s.staff]=(byStaff[s.staff]||0)+Number(s.amount);});
+
+  return (
+    <div>
+      <ModHeader icon="📊" title="Sales Intelligence Dashboard" sub="Mauzo ya Leo • Wiki • Mwezi • Top Salesperson"
+        action={<Btn onClick={()=>setShowForm(!showForm)}>+ Ongeza Mauzo</Btn>}
+      />
+      {showForm&&(
+        <Card style={{border:"1px solid rgba(232,0,110,0.25)",marginBottom:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Input label="Bidhaa" value={form.product} onChange={v=>setForm(f=>({...f,product:v}))} placeholder="Jina la bidhaa"/>
+            <Input label="Idadi" value={form.qty} onChange={v=>setForm(f=>({...f,qty:v}))} placeholder="1" type="number"/>
+            <Input label="Jumla (TZS)" value={form.amount} onChange={v=>setForm(f=>({...f,amount:v}))} placeholder="450000" type="number"/>
+            <Input label="Muuzaji" value={form.staff} onChange={v=>setForm(f=>({...f,staff:v}))} placeholder="Jina la muuzaji"/>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14}}><Btn onClick={addSale}>Hifadhi</Btn><GhostBtn onClick={()=>setShowForm(false)}>Ghairi</GhostBtn></div>
+        </Card>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Mauzo Leo" value={fmt(todayTotal)} icon="📅" color={C.pink} sub={`${todaySales.length} miamala`}/>
+        <KPI label="Jumla ya Wiki" value={fmt(weekTotal)} icon="📈" color={C.blue} sub={`${sales.length} miamala`}/>
+        <KPI label="Bidhaa Bora" value={topProducts[0]?.[0]?.split(" ").slice(0,2).join(" ")||"—"} icon="🏆" color={C.gold}/>
+        <KPI label="Top Salesperson" value={Object.entries(byStaff).sort((a,b)=>b[1]-a[1])[0]?.[0]?.split(" ")[0]||"—"} icon="⭐" color={C.green}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:20}}>
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Bidhaa Bora (Wiki)</div>
+          {topProducts.map(([name,amt],i)=>(
+            <div key={name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:12,color:C.pink,fontWeight:900}}>{i+1}</span>
+                <span style={{fontSize:12,color:C.gray}}>{name.split(" ").slice(0,3).join(" ")}</span>
+              </div>
+              <span style={{fontSize:13,fontWeight:700,color:C.white}}>{fmt(amt)}</span>
+            </div>
+          ))}
+        </Card>
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Mauzo kwa Siku</div>
+          <BarChart data={sales.slice(-7).map(s=>({l:s.date.slice(5),v:Number(s.amount)}))} max={Math.max(...sales.map(s=>Number(s.amount)))} color={C.pink}/>
+        </Card>
+      </div>
+      <Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.03)",fontSize:12,fontWeight:700,color:C.white}}>Historia ya Miamala</div>
+        {sales.slice(0,10).map((s,i)=>(
+          <div key={i} style={{display:"grid",gridTemplateColumns:"100px 1fr 60px 120px 120px",padding:"11px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <span style={{fontSize:11,color:C.gray}}>{s.date}</span>
+            <span style={{fontSize:13,color:C.light,fontWeight:600}}>{s.product}</span>
+            <span style={{fontSize:12,color:C.gray}}>×{s.qty||1}</span>
+            <span style={{fontSize:13,fontWeight:700,color:C.pink}}>{fmt(s.amount)}</span>
+            <span style={{fontSize:11,color:C.gray}}>{s.staff}</span>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 6 — FLEET & DELIVERY
+// ══════════════════════════════════════════════════════════════════════════════
+function FleetModule({repairs,showNotif}) {
+  const [deliveries,setDeliveries]=useState([
+    {id:genId("DEL"),customer:"Jumanne Ally",phone:"+255712001122",item:"Solar Kit 200W",vehicle:"V001",driver:"Omar Salim",status:"In Transit",dest:"Nyamagana"},
+    {id:genId("DEL"),customer:"Zuwena Ramadhani",phone:"+255698334455",item:"4-Ch CCTV Kit",vehicle:"V002",driver:"Baraka",status:"Delivered",dest:"Ilemela"},
+  ]);
+  const [form,setForm]=useState({customer:"",phone:"",item:"",dest:"",vehicle:"V001",driver:""});
+  const [showForm,setShowForm]=useState(false);
+
+  function addDelivery(){
+    if(!form.customer||!form.item)return;
+    setDeliveries(d=>[{id:genId("DEL"),...form,status:"Scheduled"},...d]);
+    setForm({customer:"",phone:"",item:"",dest:"",vehicle:"V001",driver:""});
+    setShowForm(false);showNotif("🚗 Usafirishaji mpya umepangwa");
+  }
+
+  const dColor={Scheduled:C.gray,"In Transit":C.blue,Delivered:C.green,Failed:C.red};
+
+  return (
+    <div>
+      <ModHeader icon="🚗" title="Fleet & Delivery Management" sub={`Magari ${Object.keys(VEHICLES).length} • ${deliveries.filter(d=>d.status==="In Transit").length} zinasafiri sasa`}
+        action={<Btn onClick={()=>setShowForm(!showForm)}>+ Usafirishaji Mpya</Btn>}
+      />
+      {showForm&&(
+        <Card style={{border:"1px solid rgba(232,0,110,0.25)",marginBottom:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Input label="Mteja" value={form.customer} onChange={v=>setForm(f=>({...f,customer:v}))} placeholder="Jina la mteja"/>
+            <Input label="Simu" value={form.phone} onChange={v=>setForm(f=>({...f,phone:v}))} placeholder="+255 7XX XXX XXX"/>
+            <Input label="Bidhaa" value={form.item} onChange={v=>setForm(f=>({...f,item:v}))} placeholder="e.g. Solar Kit 200W"/>
+            <Input label="Mahali pa Kufikisha" value={form.dest} onChange={v=>setForm(f=>({...f,dest:v}))} placeholder="e.g. Nyamagana"/>
+            <Select label="Gari" value={form.vehicle} onChange={v=>setForm(f=>({...f,vehicle:v}))} options={Object.entries(VEHICLES).map(([k,v])=>({value:k,label:v}))}/>
+            <Input label="Dereva" value={form.driver} onChange={v=>setForm(f=>({...f,driver:v}))} placeholder="Jina la dereva"/>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14}}><Btn onClick={addDelivery}>Hifadhi</Btn><GhostBtn onClick={()=>setShowForm(false)}>Ghairi</GhostBtn></div>
+        </Card>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+        {Object.entries(VEHICLES).map(([id,label])=>{
+          const active=deliveries.filter(d=>d.vehicle===id&&d.status==="In Transit").length;
+          const repJobs=repairs.filter(r=>r.vehicle===id&&r.status!=="Ready"&&r.status!=="Collected").length;
+          return(
+            <Card key={id} style={{border:`1px solid ${active>0||repJobs>0?"rgba(33,150,243,0.3)":"rgba(255,255,255,0.07)"}`}}>
+              <div style={{fontSize:22,marginBottom:8}}>{label.split(" ")[0]}</div>
+              <div style={{fontSize:12,fontWeight:700,color:C.white,marginBottom:4}}>{label.slice(2)}</div>
+              <div style={{fontSize:11,color:C.gray,marginBottom:8}}>{active} usafirishaji • {repJobs} ukarabati</div>
+              <Badge label={active>0||repJobs>0?"Inafanya Kazi":"Huru"} color={active>0||repJobs>0?C.blue:C.green}/>
+            </Card>
+          );
+        })}
+      </div>
+      <Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.03)",fontSize:12,fontWeight:700,color:C.white}}>Orodha ya Usafirishaji</div>
+        {deliveries.map(d=>(
+          <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <span style={{fontSize:11,fontFamily:"monospace",color:C.pink,fontWeight:700}}>{d.id}</span>
+                <span style={{fontSize:11,color:C.gray}}>{VEHICLES[d.vehicle]} • 👤 {d.driver}</span>
+              </div>
+              <div style={{fontSize:13,fontWeight:600,color:C.white}}>{d.customer} <span style={{fontSize:11,color:C.gray}}>→ {d.dest}</span></div>
+              <div style={{fontSize:11,color:C.gray}}>{d.item} • {d.phone}</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <Badge label={d.status} color={dColor[d.status]}/>
+              {d.status!=="Delivered"&&<button onClick={()=>setDeliveries(ds=>ds.map(x=>x.id===d.id?{...x,status:x.status==="Scheduled"?"In Transit":"Delivered"}:x))} style={{padding:"5px 12px",background:C.blue,border:"none",borderRadius:7,color:"#fff",fontSize:10,fontWeight:700,cursor:"pointer"}}>→ Endelea</button>}
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 7 — PROCUREMENT
+// ══════════════════════════════════════════════════════════════════════════════
+function ProcurementModule({showNotif}) {
+  const [orders,setOrders]=useState([
+    {id:genId("PO"),supplier:"Guangzhou Electronics Co.",item:"CCTV Bullet Cameras HD",qty:50,unit:12000,status:"Pending",ordered:today()},
+    {id:genId("PO"),supplier:"Shenzhen Solar Ltd",item:"200W Mono Solar Panels",qty:20,unit:180000,status:"Shipped",ordered:"2025-06-18"},
+    {id:genId("PO"),supplier:"Dubai Battery Trading",item:"Car Battery 60Ah",qty:30,unit:95000,status:"Delivered",ordered:"2025-06-10"},
+  ]);
+  const [form,setForm]=useState({supplier:"",item:"",qty:"",unit:"",status:"Pending"});
+  const [showForm,setShowForm]=useState(false);
+
+  function addOrder(){
+    if(!form.supplier||!form.item)return;
+    setOrders(o=>[{id:genId("PO"),...form,ordered:today()},...o]);
+    setForm({supplier:"",item:"",qty:"",unit:"",status:"Pending"});
+    setShowForm(false);showNotif("✓ Order mpya imetengenezwa");
+  }
+
+  const oColor={Pending:C.gray,Shipped:C.blue,Delivered:C.green,Cancelled:C.red};
+
+  return (
+    <div>
+      <ModHeader icon="🛒" title="Procurement & Supplier Portal" sub={`Orders ${orders.length} • ${orders.filter(o=>o.status==="Pending").length} zinasubiri`}
+        action={<Btn onClick={()=>setShowForm(!showForm)}>+ Order Mpya</Btn>}
+      />
+      {showForm&&(
+        <Card style={{border:"1px solid rgba(232,0,110,0.25)",marginBottom:20}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Input label="Jina la Msambazaji" value={form.supplier} onChange={v=>setForm(f=>({...f,supplier:v}))} placeholder="e.g. Guangzhou Electronics"/>
+            <Input label="Bidhaa" value={form.item} onChange={v=>setForm(f=>({...f,item:v}))} placeholder="e.g. CCTV Cameras HD"/>
+            <Input label="Idadi" value={form.qty} onChange={v=>setForm(f=>({...f,qty:v}))} placeholder="50" type="number"/>
+            <Input label="Bei kwa Kipande (TZS)" value={form.unit} onChange={v=>setForm(f=>({...f,unit:v}))} placeholder="12000" type="number"/>
+            <Select label="Hali" value={form.status} onChange={v=>setForm(f=>({...f,status:v}))} options={["Pending","Shipped","Delivered","Cancelled"]}/>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14}}><Btn onClick={addOrder}>Hifadhi</Btn><GhostBtn onClick={()=>setShowForm(false)}>Ghairi</GhostBtn></div>
+        </Card>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Orders Zote" value={orders.length} icon="📋" color={C.blue}/>
+        <KPI label="Thamani Inayosubiri" value={`${(orders.filter(o=>o.status==="Pending").reduce((a,o)=>a+Number(o.qty)*Number(o.unit),0)/1000000).toFixed(1)}M`} icon="💰" color={C.orange} sub="TZS"/>
+        <KPI label="Zimefika" value={orders.filter(o=>o.status==="Delivered").length} icon="✅" color={C.green}/>
+      </div>
+      <Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"100px 1fr 1fr 80px 120px 120px 100px",padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.03)"}}>
+          {["PO ID","Msambazaji","Bidhaa","Idadi","Bei/Kipande","Jumla","Hali"].map(h=><div key={h} style={{fontSize:9,fontWeight:700,color:C.gray,letterSpacing:2,textTransform:"uppercase"}}>{h}</div>)}
+        </div>
+        {orders.map(o=>(
+          <div key={o.id} style={{display:"grid",gridTemplateColumns:"100px 1fr 1fr 80px 120px 120px 100px",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",alignItems:"center"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <div style={{fontSize:10,fontFamily:"monospace",color:C.pink,fontWeight:700}}>{o.id}</div>
+            <div style={{fontSize:12,color:C.white,fontWeight:600}}>{o.supplier}</div>
+            <div style={{fontSize:12,color:C.gray}}>{o.item}</div>
+            <div style={{fontSize:12,color:C.light}}>{o.qty}</div>
+            <div style={{fontSize:12,color:C.light}}>{fmt(o.unit)}</div>
+            <div style={{fontSize:12,fontWeight:700,color:C.pink}}>{fmt(Number(o.qty)*Number(o.unit))}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <Badge label={o.status} color={oColor[o.status]}/>
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 8 — FINANCE
+// ══════════════════════════════════════════════════════════════════════════════
+function FinanceModule({sales,repairs,inventory}) {
+  const todayRev=sales.filter(s=>s.date===today()).reduce((a,s)=>a+Number(s.amount),0);
+  const weekRev=sales.reduce((a,s)=>a+Number(s.amount),0);
+  const repairRev=repairs.reduce((a,r)=>a+Number(r.cost||0),0);
+  const stockVal=inventory.reduce((a,p)=>a+p.price*p.stock,0);
+  const outstandingRep=repairs.filter(r=>r.status!=="Collected"&&Number(r.cost)>0).reduce((a,r)=>a+Number(r.cost),0);
+
+  return (
+    <div>
+      <ModHeader icon="💰" title="Finance Support Dashboard" sub="Mapato • Cash Flow • Thamani ya Stock"/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Mapato Leo" value={fmt(todayRev)} icon="📅" color={C.pink}/>
+        <KPI label="Mapato Wiki" value={fmt(weekRev)} icon="📈" color={C.blue}/>
+        <KPI label="Mapato ya Ukarabati" value={fmt(repairRev)} icon="🔧" color={C.orange}/>
+        <KPI label="Thamani ya Stock" value={fmt(stockVal)} icon="📦" color={C.purple}/>
+        <KPI label="Ukarabati Unaoendelea" value={fmt(outstandingRev)} icon="⏳" color={C.gold} sub="Bado haujapokea"/>
+        <KPI label="Jumla Mapato" value={fmt(weekRev+repairRev)} icon="💎" color={C.green}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Muhtasari wa Cash Flow</div>
+          {[["Mauzo ya Bidhaa",weekRev,C.pink],["Mapato ya Ukarabati",repairRev,C.orange],["Jumla",weekRev+repairRev,C.green]].map(([l,v,c])=>(
+            <div key={l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+              <span style={{fontSize:12,color:C.gray}}>{l}</span>
+              <span style={{fontSize:14,fontWeight:700,color:c}}>{fmt(v)}</span>
+            </div>
+          ))}
+        </Card>
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Bidhaa zenye Thamani Kubwa</div>
+          {inventory.sort((a,b)=>b.price*b.stock-a.price*a.stock).slice(0,5).map(p=>(
+            <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><span>{p.icon}</span><span style={{fontSize:12,color:C.gray}}>{p.name.split(" ").slice(0,2).join(" ")}</span></div>
+              <span style={{fontSize:12,fontWeight:700,color:C.light}}>{fmt(p.price*p.stock)}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+const outstandingRev=0; // placeholder to avoid undefined
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 9 — HR & STAFF
+// ══════════════════════════════════════════════════════════════════════════════
+function HRModule({staff,setStaff,sales}) {
+  const [tab,setTab]=useState("leaderboard");
+  const byStaff={};
+  sales.forEach(s=>{if(s.staff)byStaff[s.staff]=(byStaff[s.staff]||0)+Number(s.amount);});
+
+  return (
+    <div>
+      <ModHeader icon="👥" title="HR & Staff Performance" sub={`Wafanyakazi ${staff.length} • Uhalisi wa Utendaji`}
+        action={<div style={{display:"flex",gap:8}}>
+          {["leaderboard","attendance","tasks"].map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{padding:"7px 14px",borderRadius:8,background:tab===t?C.pink:"rgba(255,255,255,0.05)",border:`1px solid ${tab===t?C.pink:"rgba(255,255,255,0.1)"}`,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+              {{leaderboard:"Leaderboard",attendance:"Mahudhurio",tasks:"Kazi za Leo"}[t]}
+            </button>
+          ))}
+        </div>}
+      />
+      {tab==="leaderboard"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {staff.sort((a,b)=>b.score-a.score).map((s,i)=>(
+            <Card key={s.id} style={{display:"flex",alignItems:"center",gap:16,border:`1px solid ${i===0?"rgba(255,215,0,0.3)":"rgba(255,255,255,0.07)"}`}}>
+              <div style={{width:36,height:36,borderRadius:"50%",background:i===0?"linear-gradient(135deg,#ffd700,#ff9800)":i===1?"linear-gradient(135deg,#aaa,#777)":i===2?"linear-gradient(135deg,#cd7f32,#a05a2c)":"rgba(255,255,255,0.08)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:"#fff",flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:C.white}}>{s.name}</div>
+                <div style={{fontSize:11,color:C.gray}}>{s.role} • {s.dept}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:22,fontWeight:900,color:i===0?C.gold:C.pink}}>{s.score}pts</div>
+                <div style={{fontSize:10,color:C.gray}}>{s.role==="Sales Rep"?`Mauzo: ${fmt(byStaff[s.name]||0)}`:s.role==="Technician"?`Ukarabati: ${s.repairs}`:""}</div>
+              </div>
+              <div style={{width:80}}>
+                <div style={{fontSize:9,color:C.gray,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>Score</div>
+                <div style={{height:6,background:"rgba(255,255,255,0.08)",borderRadius:3,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${s.score}%`,background:i===0?"linear-gradient(90deg,#ffd700,#ff9800)":C.pink,borderRadius:3}}></div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+      {tab==="attendance"&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:14}}>
+          {staff.map(s=>(
+            <Card key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.white}}>{s.name}</div>
+                <div style={{fontSize:11,color:C.gray}}>{s.role} • {s.dept}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:22,fontWeight:900,color:s.attendance>=95?C.green:s.attendance>=85?C.orange:C.red}}>{s.attendance}%</div>
+                <div style={{fontSize:10,color:C.gray}}>Mahudhurio</div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+      {tab==="tasks"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {[
+            {task:"Angalia stock ya CCTV cameras",dept:"Showroom",done:true},
+            {task:"Peleka bidhaa kwa mteja Juma Hassan",dept:"Fleet",done:false},
+            {task:"Kamilisha ukarabati wa Solar Inverter",dept:"Workshop",done:false},
+            {task:"Piga simu wateja dhamana zinaisha wiki hii",dept:"CRM",done:false},
+            {task:"Sajili deliveries za leo kwenye mfumo",dept:"Fleet",done:true},
+          ].map((t,i)=>(
+            <Card key={i} style={{display:"flex",alignItems:"center",gap:14,border:`1px solid ${t.done?"rgba(0,230,118,0.2)":"rgba(255,255,255,0.07)"}`}}>
+              <div style={{width:20,height:20,borderRadius:"50%",background:t.done?C.green:"rgba(255,255,255,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>{t.done?"✓":""}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,color:t.done?C.gray:C.white,textDecoration:t.done?"line-through":"none"}}>{t.task}</div>
+                <div style={{fontSize:10,color:C.gray}}>{t.dept}</div>
+              </div>
+              <Badge label={t.done?"Imekamilika":"Inaendelea"} color={t.done?C.green:C.orange}/>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 10 — MARKETING
+// ══════════════════════════════════════════════════════════════════════════════
+function MarketingModule({warranties,showNotif}) {
+  const [campaigns,setCampaigns]=useState([
+    {id:genId("CAM"),name:"Warranty Expiry Reminder",type:"SMS",target:"Zinaisha Wiki Hii",sent:3,status:"Active"},
+    {id:genId("CAM"),name:"Solar Week Promotion",type:"SMS",target:"Wateja Wote",sent:47,status:"Completed"},
+  ]);
+  const [compose,setCompose]=useState({name:"",type:"SMS",msg:"",target:"Wateja Wote"});
+  const [showCompose,setShowCompose]=useState(false);
+
+  function sendCampaign(){
+    if(!compose.name||!compose.msg)return;
+    const target=warranties.length;
+    setCampaigns(c=>[{id:genId("CAM"),...compose,sent:target,status:"Active"},...c]);
+    showNotif(`📣 Campaign "${compose.name}" imetumwa kwa wateja ${target}!`);
+    setCompose({name:"",type:"SMS",msg:"",target:"Wateja Wote"});setShowCompose(false);
+  }
+
+  return (
+    <div>
+      <ModHeader icon="📣" title="Marketing Automation" sub="SMS Campaigns • Promotions • Customer Engagement"
+        action={<Btn onClick={()=>setShowCompose(!showCompose)}>+ Campaign Mpya</Btn>}
+      />
+      {showCompose&&(
+        <Card style={{border:"1px solid rgba(232,0,110,0.25)",marginBottom:20}}>
+          <div style={{fontSize:14,fontWeight:700,color:C.white,marginBottom:16}}>📣 Tengeneza Campaign</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Input label="Jina la Campaign" value={compose.name} onChange={v=>setCompose(c=>({...c,name:v}))} placeholder="e.g. Warranty Reminder June"/>
+            <Select label="Aina" value={compose.type} onChange={v=>setCompose(c=>({...c,type:v}))} options={["SMS","WhatsApp","Email"]}/>
+            <Select label="Walengwa" value={compose.target} onChange={v=>setCompose(c=>({...c,target:v}))} options={["Wateja Wote","Dhamana Zinaisha","VIP Wateja","Solar Wateja"]} style={{gridColumn:"1/-1"}}/>
+            <div style={{gridColumn:"1/-1"}}>
+              <label style={{fontSize:10,color:C.gray,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",display:"block",marginBottom:6}}>Ujumbe</label>
+              <textarea value={compose.msg} onChange={e=>setCompose(c=>({...c,msg:e.target.value}))} placeholder="Andika ujumbe wa SMS hapa..." rows={4} style={{width:"100%",padding:"10px 13px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:9,color:C.white,fontSize:13,outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14}}><Btn onClick={sendCampaign}>📤 Tuma Sasa</Btn><GhostBtn onClick={()=>setShowCompose(false)}>Ghairi</GhostBtn></div>
+        </Card>
+      )}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Wateja wa SMS" value={warranties.length} icon="📱" color={C.blue}/>
+        <KPI label="Campaigns Zilizotumwa" value={campaigns.filter(c=>c.status==="Completed").length} icon="📣" color={C.pink}/>
+        <KPI label="Campaign Zinazoendelea" value={campaigns.filter(c=>c.status==="Active").length} icon="🔄" color={C.orange}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+        {[
+          {icon:"🎂",label:"Birthday Greetings",desc:"Pongezi otomatiki siku ya kuzaliwa"},
+          {icon:"⚠️",label:"Warranty Expiry Alert",desc:"Ukumbusho wiki 2 kabla ya dhamana kumalizika"},
+          {icon:"🔥",label:"Flash Sale SMS",desc:"Toa leo — punguzo la saa 24 tu"},
+          {icon:"⭐",label:"Referral Campaign",desc:"Mteja akileta rafiki anapata TZS 10,000"},
+        ].map(t=>(
+          <Card key={t.label} style={{display:"flex",gap:12,alignItems:"center",cursor:"pointer",transition:"all .2s"}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(232,0,110,0.3)"}
+            onMouseLeave={e=>e.currentTarget.style.borderColor="rgba(255,255,255,0.07)"}>
+            <div style={{width:44,height:44,borderRadius:12,background:"rgba(232,0,110,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{t.icon}</div>
+            <div><div style={{fontSize:13,fontWeight:700,color:C.white}}>{t.label}</div><div style={{fontSize:11,color:C.gray,marginTop:2}}>{t.desc}</div></div>
+          </Card>
+        ))}
+      </div>
+      <Card style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"rgba(255,255,255,0.03)",fontSize:12,fontWeight:700,color:C.white}}>Historia ya Campaigns</div>
+        {campaigns.map(c=>(
+          <div key={c.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)"}}
+            onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+            onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:C.white}}>{c.name}</div>
+              <div style={{fontSize:11,color:C.gray}}>{c.type} • {c.target} • Walengwa: {c.sent}</div>
+            </div>
+            <Badge label={c.status} color={c.status==="Active"?C.green:C.gray}/>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 11 — EXECUTIVE COMMAND CENTER
+// ══════════════════════════════════════════════════════════════════════════════
+function ExecutiveModule({warranties,repairs,inventory,sales,staff,switchMod}) {
+  const todayRev=sales.filter(s=>s.date===today()).reduce((a,s)=>a+Number(s.amount),0);
+  const weekRev=sales.reduce((a,s)=>a+Number(s.amount),0);
+  const stockVal=inventory.reduce((a,p)=>a+p.price*p.stock,0);
+  const lowStock=inventory.filter(p=>p.stock<10).length;
+  const activeWarranties=warranties.filter(w=>w.status==="Active").length;
+  const openRepairs=repairs.filter(r=>r.status!=="Collected"&&r.status!=="Ready").length;
+  const readyRepairs=repairs.filter(r=>r.status==="Ready").length;
+
+  const alerts=[
+    lowStock>0&&{type:"warning",icon:"📦",msg:`Stock chache: bidhaa ${lowStock} zinahitaji kununuliwa`},
+    readyRepairs>0&&{type:"success",icon:"🔧",msg:`Ukarabati ${readyRepairs} uko tayari — wateja wajulishwe`},
+    warranties.filter(w=>w.status==="Expiring Soon").length>0&&{type:"warning",icon:"🛡️",msg:`Dhamana ${warranties.filter(w=>w.status==="Expiring Soon").length} zinaisha hivi karibuni`},
+  ].filter(Boolean);
+
+  return (
+    <div>
+      <ModHeader icon="🎯" title="Executive Command Center" sub={`Muhtasari wa Biashara — ${new Date().toLocaleDateString("sw-TZ",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}`}/>
+
+      {alerts.length>0&&(
+        <div style={{marginBottom:20,display:"flex",flexDirection:"column",gap:8}}>
+          {alerts.map((a,i)=>(
+            <div key={i} style={{padding:"10px 16px",borderRadius:10,background:a.type==="warning"?"rgba(255,152,0,0.1)":"rgba(0,230,118,0.08)",border:`1px solid ${a.type==="warning"?"rgba(255,152,0,0.3)":"rgba(0,230,118,0.25)"}`,display:"flex",alignItems:"center",gap:10}}>
+              <span>{a.icon}</span><span style={{fontSize:12,color:a.type==="warning"?C.orange:C.green,fontWeight:600}}>{a.msg}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Mapato Leo" value={fmt(todayRev)} icon="💰" color={C.pink}/>
+        <KPI label="Mapato Wiki" value={fmt(weekRev)} icon="📈" color={C.blue}/>
+        <KPI label="Thamani ya Stock" value={`${(stockVal/1000000).toFixed(1)}M`} icon="📦" color={C.purple} sub="TZS"/>
+        <KPI label="Wateja Waliousajiliwa" value={warranties.length} icon="👥" color={C.green}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
+        <KPI label="Dhamana Hai" value={activeWarranties} icon="🛡️" color={C.green}/>
+        <KPI label="Ukarabati Wazi" value={openRepairs} icon="🔧" color={C.orange}/>
+        <KPI label="Stock Chache" value={lowStock} icon="⚠️" color={lowStock>0?C.red:C.green}/>
+        <KPI label="Wafanyakazi" value={staff.length} icon="👤" color={C.cyan}/>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16,marginBottom:16}}>
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:16}}>Mauzo ya Siku 7 Zilizopita</div>
+          <BarChart data={sales.slice(-7).map(s=>({l:s.date.slice(5),v:Number(s.amount)}))} max={Math.max(...sales.map(s=>Number(s.amount)),1)} color={C.pink}/>
+        </Card>
+        <Card>
+          <div style={{fontSize:13,fontWeight:700,color:C.white,marginBottom:14}}>Hali ya Mfumo</div>
+          {[
+            ["Showroom","showroom",C.pink,"📺"],
+            ["CRM","crm",C.green,"🛡️"],
+            ["Ukarabati","repairs",C.orange,"🔧"],
+            ["Inventory","inventory",C.blue,"📦"],
+            ["Fleet","fleet",C.cyan,"🚗"],
+          ].map(([label,mod,color,icon])=>(
+            <div key={mod} onClick={()=>switchMod(mod)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.04)",cursor:"pointer"}}
+              onMouseEnter={e=>e.currentTarget.style.background="rgba(255,255,255,0.02)"}
+              onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}><span>{icon}</span><span style={{fontSize:12,color:C.gray}}>{label}</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:color}}></div><span style={{fontSize:10,color:color,fontWeight:700}}>Inafanya Kazi</span></div>
+            </div>
+          ))}
+        </Card>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
+        <Card>
+          <div style={{fontSize:12,fontWeight:700,color:C.white,marginBottom:12}}>Bidhaa Bora Leo</div>
+          {Object.entries(sales.filter(s=>s.date===today()).reduce((a,s)=>{a[s.product]=(a[s.product]||0)+Number(s.amount);return a;},{})).slice(0,3).map(([name,amt])=>(
+            <div key={name} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <span style={{fontSize:11,color:C.gray}}>{name.split(" ").slice(0,2).join(" ")}</span>
+              <span style={{fontSize:11,fontWeight:700,color:C.pink}}>{fmt(amt)}</span>
+            </div>
+          ))}
+          {sales.filter(s=>s.date===today()).length===0&&<div style={{fontSize:11,color:C.gray}}>Hakuna mauzo leo bado</div>}
+        </Card>
+        <Card>
+          <div style={{fontSize:12,fontWeight:700,color:C.white,marginBottom:12}}>Top Wafanyakazi</div>
+          {staff.sort((a,b)=>b.score-a.score).slice(0,3).map((s,i)=>(
+            <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:12,color:C.gold,fontWeight:900}}>{i+1}</span>
+                <span style={{fontSize:11,color:C.gray}}>{s.name.split(" ")[0]}</span>
+              </div>
+              <span style={{fontSize:11,fontWeight:700,color:C.gold}}>{s.score}pts</span>
+            </div>
+          ))}
+        </Card>
+        <Card>
+          <div style={{fontSize:12,fontWeight:700,color:C.white,marginBottom:12}}>Ukarabati — Hali</div>
+          {REPAIR_STATUSES.filter(s=>repairs.find(r=>r.status===s)).map(s=>(
+            <div key={s} style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:6,height:6,borderRadius:"50%",background:STATUS_COLOR[s]}}></div><span style={{fontSize:11,color:C.gray}}>{s}</span></div>
+              <span style={{fontSize:11,fontWeight:700,color:STATUS_COLOR[s]}}>{repairs.filter(r=>r.status===s).length}</span>
+            </div>
+          ))}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MODULE 12 — AI ASSISTANT
+// ══════════════════════════════════════════════════════════════════════════════
+function AIModule({inventory,warranties,repairs,sales}) {
+  const [messages,setMessages]=useState([
+    {role:"assistant",text:"Habari! Mimi ni AI Assistant wa Imrano Electronics. Ninaweza kukusaidia na:\n• Kutafuta bidhaa na stock\n• Kutengeneza quotation\n• Kupendekeza bidhaa mbadala\n• Kuchambua mauzo na trends\n• Kujibu maswali ya bidhaa\n\nUliza chochote! 😊"}
+  ]);
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const msgEndRef=useRef(null);
+
+  useEffect(()=>{msgEndRef.current?.scrollIntoView({behavior:"smooth"});},[messages]);
+
+  async function sendMessage(){
+    if(!input.trim()||loading)return;
+    const userMsg=input.trim();
+    setInput("");
+    setMessages(m=>[...m,{role:"user",text:userMsg}]);
+    setLoading(true);
+
+    const stockSummary=inventory.map(p=>`${p.name}: stock=${p.stock}, bei=${fmt(p.price)}`).join("\n");
+    const warrantySummary=`Wateja ${warranties.length} wamesajiliwa. Dhamana hai: ${warranties.filter(w=>w.status==="Active").length}`;
+    const repairSummary=`Ukarabati ${repairs.length}: ${repairs.map(r=>`${r.device}(${r.status})`).join(", ")}`;
+    const salesTotal=sales.reduce((a,s)=>a+Number(s.amount),0);
+
+    try {
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-6",
+          max_tokens:1000,
+          system:`Wewe ni AI Business Assistant wa Imrano Electronics Tech Ltd, duka la electronics Mwanza, Tanzania. Jibu kwa Kiswahili fupi na cha kitaalamu. Unajua data hii ya biashara:
+
+STOCK:
+${stockSummary}
+
+WATEJA: ${warrantySummary}
+UKARABATI: ${repairSummary}
+MAUZO (wiki): ${fmt(salesTotal)}
+
+Saidia kuhusu: stock, quotation, mapendekezo ya bidhaa, uchambuzi wa mauzo. Jibu kwa Kiswahili daima. Tumia emoji kidogo.`,
+          messages:[...messages.filter(m=>m.role!=="assistant"||messages.indexOf(m)!==0).map(m=>({role:m.role,content:m.text})),{role:"user",content:userMsg}]
+        })
+      });
+      const data=await res.json();
+      const reply=data.content?.[0]?.text||"Samahani, kuna tatizo la muda. Jaribu tena.";
+      setMessages(m=>[...m,{role:"assistant",text:reply}]);
+    } catch(e) {
+      setMessages(m=>[...m,{role:"assistant",text:"Samahani, AI haiwezi kujibu sasa hivi. Angalia muunganisho wa internet."}]);
+    }
+    setLoading(false);
+  }
+
+  const quickQ=["Ni bidhaa gani ina stock chache?","Tengeneza quotation ya CCTV 4-channel","Ni nani muuzaji bora wiki hii?","Pendekeza mfumo wa solar kwa nyumba ndogo"];
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 160px)"}}>
+      <ModHeader icon="🤖" title="AI Business Assistant" sub="Powered by Claude AI • Jibu za Papo Hapo kwa Kiswahili"/>
+      <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+        {messages.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
+            <div style={{maxWidth:"75%",padding:"12px 16px",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",background:m.role==="user"?"linear-gradient(135deg,#e8006e,#ff1a80)":"rgba(255,255,255,0.05)",border:m.role==="user"?"none":"1px solid rgba(255,255,255,0.08)",fontSize:13,color:C.white,lineHeight:1.65,whiteSpace:"pre-wrap"}}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+        {loading&&<div style={{display:"flex",justifyContent:"flex-start"}}><div style={{padding:"12px 16px",borderRadius:"16px 16px 16px 4px",background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",fontSize:13,color:C.gray}}>⏳ AI inafikiria...</div></div>}
+        <div ref={msgEndRef}/>
+      </div>
+      <div style={{marginBottom:12,display:"flex",gap:8,flexWrap:"wrap"}}>
+        {quickQ.map(q=>(
+          <button key={q} onClick={()=>{setInput(q);}} style={{padding:"6px 12px",borderRadius:20,background:"rgba(232,0,110,0.1)",border:"1px solid rgba(232,0,110,0.25)",color:C.pink,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+            {q.slice(0,30)}{q.length>30?"...":""}
+          </button>
+        ))}
+      </div>
+      <div style={{display:"flex",gap:10}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!e.shiftKey&&sendMessage()} placeholder="Uliza swali lolote kuhusu biashara yako..." style={{flex:1,padding:"12px 16px",background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,color:C.white,fontSize:13,outline:"none"}}/>
+        <Btn onClick={sendMessage} style={{padding:"12px 24px",borderRadius:12,opacity:loading?0.6:1}}>
+          {loading?"...":"Tuma ➤"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
